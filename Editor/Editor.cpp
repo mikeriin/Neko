@@ -156,7 +156,6 @@ int main(
 	mainShader.Link();
 	mainShader.Use();
 
-	//mainShader.SetVec3("colorMult", vec3{ 0.596, 0.878, 0.439 });
 
 
 	
