@@ -4,7 +4,7 @@
 #extension GL_ARB_bindless_texture : require
 
 
-layout(binding = 0, std430) readonly buffer textureHandles
+layout(binding = 3, std430) readonly buffer textureHandles
 {
 	sampler2D bindlessTextures[];
 };

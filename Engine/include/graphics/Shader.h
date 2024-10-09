@@ -15,7 +15,8 @@
 class Shader
 {
 public:
-	Shader();
+	Shader() = delete;
+	Shader(const char* vertexShader, const char* fragmentShader);
 	~Shader();
 
 	void AddShader(const char* shaderFilePath, u32 shaderType);
@@ -35,6 +36,8 @@ public:
 private:
 	u32 m_Id;
 	std::vector<u32> m_Shaders{};
+
+	u32 createShader(const char* shaderPath, u32 shaderType) const;
 };
 
 

@@ -14,7 +14,7 @@
 #include "graphics/Camera.h"
 
 
-#include "glad/glad_wgl.h"
+#include "glad/glad.h"
 #include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
 using vec3 = glm::vec3;
@@ -50,10 +50,7 @@ int main(
 	glClearColor(0.675f, 0.529f, 0.773f, 1.0f);
 
 
-
-	Shader mainShader;
-	mainShader.AddShader("assets/shaders/main_vert.glsl", GL_VERTEX_SHADER);
-	mainShader.AddShader("assets/shaders/bindless_textures_frag.glsl", GL_FRAGMENT_SHADER);
+	Shader mainShader{ "assets/shaders/main_vert.glsl", "assets/shaders/bindless_textures_frag.glsl" };
 	//mainShader.AddShader("assets/shaders/main_frag.glsl", GL_FRAGMENT_SHADER);
 	mainShader.Link();
 	mainShader.Use();
@@ -70,7 +67,7 @@ int main(
 	u32 textureBuffer;
 	glCreateBuffers(1, &textureBuffer);
 	glNamedBufferStorage(textureBuffer, sizeof(u64) * Texture::TextureHandles.size(), Texture::TextureHandles.data(), GL_DYNAMIC_STORAGE_BIT);
-	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, textureBuffer);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, textureBuffer);
 
 
 

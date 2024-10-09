@@ -8,19 +8,20 @@
 
 
 std::vector<u32> Texture::Textures = {};
-std::vector<GLuint64> Texture::TextureHandles = {};
+std::vector<u64> Texture::TextureHandles = {};
 bool Texture::sm_IsPixelated = false;
 
 
 Texture::Texture(const char* textureFilePath)
 {
-	glCreateTextures(GL_TEXTURE_2D, 1, &m_TextureId);
+	u32 textureID;
 
-	glTextureParameteri(m_TextureId, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTextureParameteri(m_TextureId, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	//glTextureParameteri(m_TextureId, GL_TEXTURE_WRAP_T, GL_TEXTURE_WRAP_T);
-	glTextureParameteri(m_TextureId, GL_TEXTURE_MIN_FILTER, sm_IsPixelated ? GL_NEAREST : GL_LINEAR);
-	glTextureParameteri(m_TextureId, GL_TEXTURE_MAG_FILTER, sm_IsPixelated ? GL_NEAREST : GL_LINEAR);
+	glCreateTextures(GL_TEXTURE_2D, 1, &textureID);
+
+	glTextureParameteri(textureID, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTextureParameteri(textureID, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTextureParameteri(textureID, GL_TEXTURE_MIN_FILTER, sm_IsPixelated ? GL_NEAREST : GL_LINEAR);
+	glTextureParameteri(textureID, GL_TEXTURE_MAG_FILTER, sm_IsPixelated ? GL_NEAREST : GL_LINEAR);
 
 	int width, height, channels;
 	stbi_set_flip_vertically_on_load(true);
@@ -65,17 +66,14 @@ Texture::Texture(const char* textureFilePath)
 			return;
 		}
 
-		/*std::cout << "TEXTURE::INFO::Internal format: " << internalFormat << "\n";
-		std::cout << "TEXTURE::INFO::External format: " << externalFormat << "\n";*/
+		glTextureStorage2D(textureID, 1, internalFormat, width, height);
+		glTextureSubImage2D(textureID, 0, 0, 0, width, height, externalFormat, GL_UNSIGNED_BYTE, pixels);
 
-		glTextureStorage2D(m_TextureId, 1, internalFormat, width, height);
-		glTextureSubImage2D(m_TextureId, 0, 0, 0, width, height, externalFormat, GL_UNSIGNED_BYTE, pixels);
-
-		GLuint64 handle = glGetTextureHandleARB(m_TextureId);
+		u64 handle = glGetTextureHandleARB(textureID);
 		if (!handle) std::cerr << "TEXTURE::ERROR::glGetTextureHandleARB: " << glGetError() << "\n";
 		glMakeTextureHandleResidentARB(handle);
 
-		Textures.push_back(m_TextureId);
+		Textures.push_back(textureID);
 		TextureHandles.push_back(handle);
 	}
 	else

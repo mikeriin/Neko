@@ -4,8 +4,8 @@
 #ifdef _WIN32
 
 #include <iostream>
-#include <Windows.h>
 #include <glad/glad_wgl.h>
+#include <Windows.h>
 
 
 
