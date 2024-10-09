@@ -8,6 +8,9 @@
 #include <glad/glad_wgl.h>
 
 
+
+
+
 const wchar_t WND_CLASS_NAME[] = L"WND CLASS";
 
 static LRESULT Wndproc(
@@ -48,6 +51,111 @@ static LRESULT Wndproc(
 	}
 
 	return NULL;
+}
+
+
+static void GLAPIENTRY MessageCallback(
+	GLenum source,
+	GLenum type,
+	GLuint id,
+	GLenum severity,
+	GLsizei length,
+	const GLchar* msg,
+	const void* data
+) {
+	std::string _source;
+	std::string _type;
+	std::string _severity;
+
+	switch (source) {
+	case GL_DEBUG_SOURCE_API:
+		_source = "API";
+		break;
+
+	case GL_DEBUG_SOURCE_WINDOW_SYSTEM:
+		_source = "WINDOW SYSTEM";
+		break;
+
+	case GL_DEBUG_SOURCE_SHADER_COMPILER:
+		_source = "SHADER COMPILER";
+		break;
+
+	case GL_DEBUG_SOURCE_THIRD_PARTY:
+		_source = "THIRD PARTY";
+		break;
+
+	case GL_DEBUG_SOURCE_APPLICATION:
+		_source = "APPLICATION";
+		break;
+
+	case GL_DEBUG_SOURCE_OTHER:
+		_source = "UNKNOWN";
+		break;
+
+	default:
+		_source = "UNKNOWN";
+		break;
+	}
+
+	switch (type) {
+	case GL_DEBUG_TYPE_ERROR:
+		_type = "ERROR";
+		break;
+
+	case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR:
+		_type = "DEPRECATED BEHAVIOR";
+		break;
+
+	case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR:
+		_type = "UDEFINED BEHAVIOR";
+		break;
+
+	case GL_DEBUG_TYPE_PORTABILITY:
+		_type = "PORTABILITY";
+		break;
+
+	case GL_DEBUG_TYPE_PERFORMANCE:
+		_type = "PERFORMANCE";
+		break;
+
+	case GL_DEBUG_TYPE_OTHER:
+		_type = "OTHER";
+		break;
+
+	case GL_DEBUG_TYPE_MARKER:
+		_type = "MARKER";
+		break;
+
+	default:
+		_type = "UNKNOWN";
+		break;
+	}
+
+	switch (severity) {
+	case GL_DEBUG_SEVERITY_HIGH:
+		_severity = "HIGH";
+		break;
+
+	case GL_DEBUG_SEVERITY_MEDIUM:
+		_severity = "MEDIUM";
+		break;
+
+	case GL_DEBUG_SEVERITY_LOW:
+		_severity = "LOW";
+		break;
+
+	case GL_DEBUG_SEVERITY_NOTIFICATION:
+		_severity = "NOTIFICATION";
+		break;
+
+	default:
+		_severity = "UNKNOWN";
+		break;
+	}
+	std::cout << "OPENGL::ERROR::" << id << ": " << _type
+		<< " - " << _source
+		<< " - " << _severity
+		<< " - " << msg << "\n";
 }
 
 
@@ -147,14 +255,25 @@ bool Window::Create(
 
 	m_GraphicsHandle = GetDC((HWND)m_Handle);
 
-	PIXELFORMATDESCRIPTOR pfd{};
-	pfd.nSize = sizeof(PIXELFORMATDESCRIPTOR);
-	pfd.nVersion = 1;
-	pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER;
-	pfd.iPixelType = PFD_TYPE_RGBA;
-	pfd.cColorBits = 32;
-	pfd.cDepthBits = 24;
-	pfd.cStencilBits = 8;
+	PIXELFORMATDESCRIPTOR pfd =
+	{
+		sizeof(PIXELFORMATDESCRIPTOR),
+		1,
+		PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER,    // Flags
+		PFD_TYPE_RGBA,        // The kind of framebuffer. RGBA or palette.
+		32,                   // Colordepth of the framebuffer.
+		0, 0, 0, 0, 0, 0,
+		0,
+		0,
+		0,
+		0, 0, 0, 0,
+		24,                   // Number of bits for the depthbuffer
+		8,                    // Number of bits for the stencilbuffer
+		0,                    // Number of Aux buffers in the framebuffer.
+		PFD_MAIN_PLANE,
+		0,
+		0, 0, 0
+	};
 
 	int pixelFormat = ChoosePixelFormat((HDC)m_GraphicsHandle, &pfd);
 	
@@ -186,22 +305,24 @@ bool Window::Create(
 	wglDeleteContext(tempContext);
 
 
-	int piAttribList[] = {
-		WGL_DRAW_TO_WINDOW_ARB, TRUE,
-		WGL_SUPPORT_OPENGL_ARB, TRUE,
-		WGL_DOUBLE_BUFFER_ARB, TRUE,
-		WGL_ACCELERATION_ARB, WGL_FULL_ACCELERATION_ARB,
+	int attribList[] =
+	{
+		WGL_DRAW_TO_WINDOW_ARB, GL_TRUE,
+		WGL_SUPPORT_OPENGL_ARB, GL_TRUE,
+		WGL_DOUBLE_BUFFER_ARB, GL_TRUE,
 		WGL_PIXEL_TYPE_ARB, WGL_TYPE_RGBA_ARB,
 		WGL_COLOR_BITS_ARB, 32,
 		WGL_DEPTH_BITS_ARB, 24,
 		WGL_STENCIL_BITS_ARB, 8,
-		0
+		WGL_ACCELERATION_ARB, WGL_FULL_ACCELERATION_ARB,
+		0, // End
 	};
+
 
 	int format;
 	UINT numFormat;
 
-	wglChoosePixelFormatARB((HDC)m_GraphicsHandle, piAttribList, nullptr, 1, &format, &numFormat);
+	wglChoosePixelFormatARB((HDC)m_GraphicsHandle, attribList, NULL, 1, &format, &numFormat);
 
 	if (numFormat)
 	{
@@ -220,6 +341,7 @@ bool Window::Create(
 		WGL_CONTEXT_MAJOR_VERSION_ARB, 4,
 		WGL_CONTEXT_MINOR_VERSION_ARB, 6,
 		WGL_CONTEXT_PROFILE_MASK_ARB, WGL_CONTEXT_CORE_PROFILE_BIT_ARB,
+		WGL_CONTEXT_FLAGS_ARB, WGL_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB | WGL_CONTEXT_DEBUG_BIT_ARB,
 		0
 	};
 
@@ -232,6 +354,12 @@ bool Window::Create(
 	}
 
 	wglMakeCurrent((HDC)m_GraphicsHandle, (HGLRC)m_GLContext);
+
+	const GLubyte* version = glGetString(GL_VERSION);
+	std::cout << "OpenGL Version: " << version << std::endl;
+
+	glEnable(GL_DEBUG_OUTPUT);
+	glDebugMessageCallback(MessageCallback, 0);
 
 	m_IsOpen = true;
 	return true;

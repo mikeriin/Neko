@@ -44,7 +44,6 @@ void Shader::Link()
 	for (const auto& shader : m_Shaders) glAttachShader(m_Id, shader);
 
 	glLinkProgram(m_Id);
-	std::cout << glGetError() << "\n";
 
 	int isLinked{ 0 };
 	glGetProgramiv(m_Id, GL_LINK_STATUS, &isLinked);

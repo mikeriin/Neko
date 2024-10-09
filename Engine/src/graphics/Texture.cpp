@@ -18,6 +18,7 @@ Texture::Texture(const char* textureFilePath)
 
 	glTextureParameteri(m_TextureId, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTextureParameteri(m_TextureId, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	//glTextureParameteri(m_TextureId, GL_TEXTURE_WRAP_T, GL_TEXTURE_WRAP_T);
 	glTextureParameteri(m_TextureId, GL_TEXTURE_MIN_FILTER, sm_IsPixelated ? GL_NEAREST : GL_LINEAR);
 	glTextureParameteri(m_TextureId, GL_TEXTURE_MAG_FILTER, sm_IsPixelated ? GL_NEAREST : GL_LINEAR);
 

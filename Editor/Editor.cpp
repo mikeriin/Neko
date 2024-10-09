@@ -39,8 +39,7 @@ int main(
 	
 	if (!mainWindow.Create(1280, 720, "Widnow")) return -1;
 
-	const GLubyte* version = glGetString(GL_VERSION);
-	std::cout << "OpenGL Version: " << version << std::endl;
+	
 
 
 	glEnable(GL_DEPTH_TEST);
@@ -50,6 +49,14 @@ int main(
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glClearColor(0.675f, 0.529f, 0.773f, 1.0f);
 
+
+
+	Shader mainShader;
+	mainShader.AddShader("assets/shaders/main_vert.glsl", GL_VERTEX_SHADER);
+	mainShader.AddShader("assets/shaders/bindless_textures_frag.glsl", GL_FRAGMENT_SHADER);
+	//mainShader.AddShader("assets/shaders/main_frag.glsl", GL_FRAGMENT_SHADER);
+	mainShader.Link();
+	mainShader.Use();
 
 
 
@@ -64,8 +71,6 @@ int main(
 	glCreateBuffers(1, &textureBuffer);
 	glNamedBufferStorage(textureBuffer, sizeof(u64) * Texture::TextureHandles.size(), Texture::TextureHandles.data(), GL_DYNAMIC_STORAGE_BIT);
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, textureBuffer);
-
-	
 
 
 
@@ -149,14 +154,6 @@ int main(
 	glVertexArrayAttribBinding(vao, 2, 0); // index 2 binding 0
 
 
-	Shader mainShader;
-	mainShader.AddShader("assets/shaders/main_vert.glsl", GL_VERTEX_SHADER);
-	mainShader.AddShader("assets/shaders/bindless_textures_frag.glsl", GL_FRAGMENT_SHADER);
-	//mainShader.AddShader("assets/shaders/main_frag.glsl", GL_FRAGMENT_SHADER);
-	mainShader.Link();
-	mainShader.Use();
-
-
 
 
 	
@@ -231,6 +228,10 @@ int main(
 
 		mainWindow.RenderSwap();
 	}
+
+
+	for (u64 handle : Texture::TextureHandles) glMakeTextureHandleNonResidentARB(handle);
+
 
 	return 0;
 }
