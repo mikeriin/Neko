@@ -18,14 +18,26 @@
     <ClCompile Include="Editor.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\world\BlockManager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\world\NewChunk.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="assets\shaders\main_vert.glsl" />
     <None Include="assets\shaders\main_frag.glsl" />
-    <None Include="assets\shaders\bindless_textures_frag.glsl" />
+    <None Include="assets\shaders\main_bindless_textures_frag.glsl" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="include\Cube.h">
+    <ClInclude Include="include\Block.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\world\BlockManager.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\world\NewChunk.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

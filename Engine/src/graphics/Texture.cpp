@@ -7,21 +7,17 @@
 #include "stb/stb_image.h"
 
 
-std::vector<u32> Texture::Textures = {};
-std::vector<u64> Texture::TextureHandles = {};
 bool Texture::sm_IsPixelated = false;
 
 
 Texture::Texture(const char* textureFilePath)
 {
-	u32 textureID;
+	glCreateTextures(GL_TEXTURE_2D, 1, &m_TextureId);
 
-	glCreateTextures(GL_TEXTURE_2D, 1, &textureID);
-
-	glTextureParameteri(textureID, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTextureParameteri(textureID, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glTextureParameteri(textureID, GL_TEXTURE_MIN_FILTER, sm_IsPixelated ? GL_NEAREST : GL_LINEAR);
-	glTextureParameteri(textureID, GL_TEXTURE_MAG_FILTER, sm_IsPixelated ? GL_NEAREST : GL_LINEAR);
+	glTextureParameteri(m_TextureId, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTextureParameteri(m_TextureId, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTextureParameteri(m_TextureId, GL_TEXTURE_MIN_FILTER, sm_IsPixelated ? GL_NEAREST : GL_LINEAR);
+	glTextureParameteri(m_TextureId, GL_TEXTURE_MAG_FILTER, sm_IsPixelated ? GL_NEAREST : GL_LINEAR);
 
 	int width, height, channels;
 	stbi_set_flip_vertically_on_load(true);
@@ -66,15 +62,10 @@ Texture::Texture(const char* textureFilePath)
 			return;
 		}
 
-		glTextureStorage2D(textureID, 1, internalFormat, width, height);
-		glTextureSubImage2D(textureID, 0, 0, 0, width, height, externalFormat, GL_UNSIGNED_BYTE, pixels);
+		glTextureStorage2D(m_TextureId, 1, internalFormat, width, height);
+		glTextureSubImage2D(m_TextureId, 0, 0, 0, width, height, externalFormat, GL_UNSIGNED_BYTE, pixels);
 
-		u64 handle = glGetTextureHandleARB(textureID);
-		if (!handle) std::cerr << "TEXTURE::ERROR::glGetTextureHandleARB: " << glGetError() << "\n";
-		glMakeTextureHandleResidentARB(handle);
-
-		Textures.push_back(textureID);
-		TextureHandles.push_back(handle);
+		glGenerateTextureMipmap(m_TextureId);
 	}
 	else
 	{
@@ -86,7 +77,7 @@ Texture::Texture(const char* textureFilePath)
 
 Texture::~Texture()
 {
-	//glDeleteTextures(1, &m_TextureId);
+	glDeleteTextures(1, &m_TextureId);
 }
 
 

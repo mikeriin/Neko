@@ -19,6 +19,8 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="include\graphics\BindlessTextureManager.h" />
+    <ClInclude Include="include\graphics\Buffer.h" />
     <ClInclude Include="include\graphics\Camera.h" />
     <ClInclude Include="include\core\Event.h" />
     <ClInclude Include="include\core\Keycode.h" />
@@ -28,8 +30,11 @@
     <ClInclude Include="include\utils\FileReader.h" />
     <ClInclude Include="include\core\Time.h" />
     <ClInclude Include="include\graphics\Texture.h" />
+    <ClInclude Include="include\graphics\VertexArray.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\graphics\BindlessTextureManager.cpp" />
+    <ClCompile Include="src\graphics\Buffer.cpp" />
     <ClCompile Include="src\graphics\Camera.cpp" />
     <ClCompile Include="src\graphics\Shader.cpp" />
     <ClCompile Include="src\core\Win32Event.cpp" />
@@ -38,6 +43,7 @@
     <ClCompile Include="src\glad_wgl.c" />
     <ClCompile Include="src\core\Time.cpp" />
     <ClCompile Include="src\graphics\Texture.cpp" />
+    <ClCompile Include="src\graphics\VertexArray.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>

@@ -9,6 +9,12 @@
 
 
 
+extern "C"
+{
+	__declspec(dllexport) unsigned long NvOptimusEnablement = 0x00000001;
+	__declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
+}
+
 
 
 const wchar_t WND_CLASS_NAME[] = L"WND CLASS";
@@ -145,8 +151,9 @@ static void GLAPIENTRY MessageCallback(
 		break;
 
 	case GL_DEBUG_SEVERITY_NOTIFICATION:
-		_severity = "NOTIFICATION";
-		break;
+		return;
+		/*_severity = "NOTIFICATION";
+		break;*/
 
 	default:
 		_severity = "UNKNOWN";

@@ -1,43 +1,50 @@
 
+
 #include <iostream>
 #include <vector>
 #include <chrono>
 #include <cstdlib>
+#include <queue>
 
 
 #include "Neko.h"
+
 #include "core/Window.h"
 #include "core/Event.h"
 #include "core/Time.h"
+
 #include "graphics/Shader.h"
 #include "graphics/Texture.h"
 #include "graphics/Camera.h"
+#include "graphics/Buffer.h"
+#include "graphics/VertexArray.h"
+#include "graphics/BindlessTextureManager.h"
+
+//#include "world/Chunk.h"
+#include "world/BlockManager.h"
+#include "world/NewChunk.h"
+#include "Block.h"
 
 
-#include "glad/glad.h"
-#include "glm/glm.hpp"
-#include "glm/gtc/matrix_transform.hpp"
+#include <glad/glad.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 using vec3 = glm::vec3;
 using vec2 = glm::vec2;
 using mat4 = glm::mat4;
 
 
-#include "Cube.h"
 
 
-
-
-int main(
-	int argc, 
-	char* argv[]
-) {
+int main(int argc, char* argv[]) 
+{
 	Window mainWindow{};
 	EventHandler events{};
 
 	Time time{};
-	time.SetMaxFPS(0); // use Time::FixedDeltaTime
+	//time.SetMaxFPS(60); // use Time::FixedDeltaTime
 	
-	if (!mainWindow.Create(1280, 720, "Widnow")) return -1;
+	if (!mainWindow.Create(1600, 900, "Widnow")) return -1;
 
 	
 
@@ -50,106 +57,43 @@ int main(
 	glClearColor(0.675f, 0.529f, 0.773f, 1.0f);
 
 
-	Shader mainShader{ "assets/shaders/main_vert.glsl", "assets/shaders/bindless_textures_frag.glsl" };
-	//mainShader.AddShader("assets/shaders/main_frag.glsl", GL_FRAGMENT_SHADER);
-	mainShader.Link();
-	mainShader.Use();
-
-
 
 	Texture::SetPixelated(true);
+	BindlessTextureManager textureManager;
+	BlockManager* blockManager = BlockManager::GetInstance();
+	
+	blockManager->MapTexture(Block::Debug, textureManager.AddTexture(new Texture("assets/textures/debug.png")));
+	blockManager->MapTexture(Block::Dirt, textureManager.AddTexture(new Texture("assets/textures/dirt.png")));
+	blockManager->MapTexture(Block::GrassBlock, textureManager.AddTexture(new Texture("assets/textures/grass_block_top.png")));
+	blockManager->MapTexture(Block::GrassBlockSide, textureManager.AddTexture(new Texture("assets/textures/grass_block_side.png")));
+	blockManager->MapTexture(Block::Stone, textureManager.AddTexture(new Texture("assets/textures/stone.png")));
+	blockManager->MapTexture(Block::GoldBlock, textureManager.AddTexture(new Texture("assets/textures/gold_block.png")));
+	blockManager->MapTexture(Block::Snow, textureManager.AddTexture(new Texture("assets/textures/snow.png")));
+
+	textureManager.UpdateSSBO();
 
 
-	Texture dirtTex("assets/textures/dirt.png");
-	//Texture grassBlockSideOverlayTex("assets/textures/grass_block_side_overlay.png");
-	//Texture grassBlockTopTex("assets/textures/grass_block_top.png");
 
-	u32 textureBuffer;
-	glCreateBuffers(1, &textureBuffer);
-	glNamedBufferStorage(textureBuffer, sizeof(u64) * Texture::TextureHandles.size(), Texture::TextureHandles.data(), GL_DYNAMIC_STORAGE_BIT);
-	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, textureBuffer);
+	ChunkSettings chunkSettings;
+	chunkSettings.Size = 16;
+	chunkSettings.Seed = 99999999u;
 
-
-
-	std::vector<Vertex> vertices{};
-	std::vector<u32> indices{};
-	int blocks[10 * 10 * 10] = {};
-
-	for (i32 z = 0; z < 10; z++)
+	std::thread generationThread;
+	std::queue<glm::ivec3> chunkToGenerate;
+	for (i32 i = -12; i < 12; i++)
 	{
-		for (i32 y = 0; y < 10; y++)
+		for (i32 j = -12; j < 12; j++)
 		{
-			for (i32 x = 0; x < 10; x++)
+			for (i32 k = -1; k < (i32)(chunkSettings.MaxHeight / chunkSettings.Size); k++)
 			{
-				i32 index = y * (10 * 10) + z * (10) + x;
-				i32 randVal = rand() % 10;
-
-				if (randVal > 3 && randVal < 7) blocks[index] = 1;
-				else blocks[index] = 0;
+				chunkToGenerate.push(glm::ivec3(i, k, j));
 			}
 		}
 	}
-
-
-	for (i32 z = -5; z < 5; z++)
-	{
-		for (i32 y = -5; y < 5; y++)
-		{
-			for (i32 x = -5; x < 5; x++)
-			{
-				if (z == -5 || z == 4 || y == -5 || y == 4 || x == -5 || x == 4) continue;
-
-				i32 index = (y + 5) * (10 * 10) + (z + 5) * (10) + (x + 5);
-
-				if (blocks[index] == 0) continue;
-
-				i32 z0 = (y + 5) * (10 * 10) + (z + 4) * (10) + (x + 5); // back
-				if (blocks[z0] == 0) AddFace(vertices, indices, 3, vec3{ x, y, z }); // back
-				i32 z1 = (y + 5) * (10 * 10) + (z + 6) * (10) + (x + 5); // front
-				if (blocks[z1] == 0) AddFace(vertices, indices, 1, vec3{ x, y, z }); // front
-
-				i32 x0 = (y + 5) * (10 * 10) + (z + 5) * (10) + (x + 4); // left
-				if (blocks[x0] == 0) AddFace(vertices, indices, 4, vec3{ x, y, z }); // left
-				i32 x1 = (y + 5) * (10 * 10) + (z + 5) * (10) + (x + 6); // right
-				if (blocks[x1] == 0) AddFace(vertices, indices, 2, vec3{ x, y, z }); // right
-
-				i32 y0 = (y + 4) * (10 * 10) + (z + 5) * (10) + (x + 5); // bottom
-				if (blocks[y0] == 0) AddFace(vertices, indices, 6, vec3{ x, y, z }); // bottom
-				i32 y1 = (y + 6) * (10 * 10) + (z + 5) * (10) + (x + 5); // top
-				if (blocks[y1] == 0) AddFace(vertices, indices, 5, vec3{ x, y, z }); // top
-			}
-		}
-	}
-
-
-
-	u32 vbo;
-	glCreateBuffers(1, &vbo);
-	glNamedBufferStorage(vbo, sizeof(Vertex) * vertices.size(), vertices.data(), GL_DYNAMIC_STORAGE_BIT);
-
-	u32 ibo;
-	glCreateBuffers(1, &ibo);
-	glNamedBufferStorage(ibo, sizeof(u32) * indices.size(), indices.data(), GL_DYNAMIC_STORAGE_BIT);
-
-	u32 vao;
-	glCreateVertexArrays(1, &vao);
-
-	glVertexArrayVertexBuffer(vao, 0, vbo, 0, sizeof(Vertex)); // binding 0
-
-	glVertexArrayElementBuffer(vao, ibo);
-
-	glEnableVertexArrayAttrib(vao, 0); // index 0
-	glVertexArrayAttribFormat(vao, 0, 3, GL_FLOAT, GL_FALSE, offsetof(Vertex, Position)); // index 0
-	glVertexArrayAttribBinding(vao, 0, 0); // index 0 binding 0
-
-	glEnableVertexArrayAttrib(vao, 1); // index 1
-	glVertexArrayAttribFormat(vao, 1, 3, GL_FLOAT, GL_FALSE, offsetof(Vertex, Normal)); // index 1
-	glVertexArrayAttribBinding(vao, 1, 0); // index 1 binding 0
-
-	glEnableVertexArrayAttrib(vao, 2); // index 2
-	glVertexArrayAttribFormat(vao, 2, 2, GL_FLOAT, GL_FALSE, offsetof(Vertex, UV)); // index 2
-	glVertexArrayAttribBinding(vao, 2, 0); // index 2 binding 0
-
+	std::vector<NewChunk*> chunks;
+	NewChunk* currentChunk{ nullptr };
+	std::unordered_map<NewChunk*, bool> chunkVisibility;
+	bool isChunkLoading = false;
 
 
 
@@ -159,14 +103,21 @@ int main(
 	f32 aspect = (f32)viewport[2] / viewport[3];
 
 	CameraSettings camSettings{};
-	camSettings.Position = vec3{ 0.0, 5.0, 10.0 };
+	camSettings.Position = vec3{ 0.0, chunkSettings.MaxHeight, 0.0 };
 	camSettings.AspectRatio = aspect;
-	camSettings.Speed = 8.0f;
-	camSettings.SensitivityX = 0.3f;
-	camSettings.sensitivityY = 0.2f;
+	camSettings.Speed = 50.0f;
+	camSettings.SensitivityX = 0.45f;
+	camSettings.sensitivityY = 0.35f;
 	camSettings.Yaw = -90.0f;
+	camSettings.Pitch = -80.0f;
+	camSettings.FarPlane = 1000.0f;
 
 	Camera mainCamera{ camSettings };
+
+	//Shader mainShader{ "assets/shaders/main_vert.glsl", "assets/shaders/main_frag.glsl" };
+	Shader mainShader{ "assets/shaders/main_vert.glsl", "assets/shaders/main_bindless_textures_frag.glsl" };
+	mainShader.Link();
+	mainShader.Use();
 
 	mat4 transform{ 1.0 };
 	mainShader.SetMat4("transform", transform);
@@ -202,33 +153,90 @@ int main(
 		mainShader.SetMat4("view", mainCamera.GetViewMatrix());
 		mainShader.SetMat4("projection", mainCamera.GetProjectionMatrix());
 
-
 		// draw
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 
-		/*dirtTex.BindUnit(0);
-		mainShader.SetInt("texBlock", 0);
-		grassBlockSideOverlayTex.BindUnit(1);
-		mainShader.SetInt("texOverlay", 1);
-		grassBlockTopTex.BindUnit(2);
-		mainShader.SetInt("texTop", 2);*/
+		textureManager.Bind(0);
 
-		//for (u64 handle : Texture::TextureHandles) glMakeTextureHandleResidentARB(handle);
 
-		glBindVertexArray(vao);
-		glDrawElements(GL_TRIANGLES, (int)indices.size(), GL_UNSIGNED_INT, 0);
+		if (!chunkToGenerate.empty() && !isChunkLoading)
+		{
+			glm::ivec3 chPos = chunkToGenerate.front();
 
-		//for (u64 handle : Texture::TextureHandles) glMakeTextureHandleNonResidentARB(handle);
+			chunkSettings.Position = chPos;
+			currentChunk = new NewChunk(chunkSettings);
+			
+			generationThread = std::thread([&currentChunk]() {
+				currentChunk->Generate();
+			});
+			generationThread.detach();
 
+			isChunkLoading = true;
+			chunkToGenerate.pop();
+		}
+		if (currentChunk && currentChunk->IsGenerated())
+		{
+			chunks.push_back(currentChunk);
+			isChunkLoading = false;
+			currentChunk = nullptr;
+		}
+
+		for (auto it = chunks.begin(); it != chunks.end(); ) {
+			NewChunk* ch = *it;
+
+			// Si le chunk est vide, on le supprime
+			if (ch->IsChunkEmpty()) {
+				delete ch;
+				it = chunks.erase(it); // Efface le chunk et récupère l'itérateur suivant
+				continue;
+			}
+
+			bool isInFrustum = true;
+			static int frameCounter = 0;
+			if (frameCounter++ % 10 == 0) {  // Teste la frustum tous les 5 frames
+				// Récupère les paramètres du chunk
+				ChunkSettings currentChunkSettings = ch->GetSettings();
+				glm::vec4 worldPosition{
+						(f64)(currentChunkSettings.Position.x) * currentChunkSettings.Size,
+						(f64)(currentChunkSettings.Position.y) * currentChunkSettings.Size,
+						(f64)(currentChunkSettings.Position.z) * currentChunkSettings.Size,
+						1.0
+				};
+
+				// Multiplie par la matrice de vue et de projection
+				glm::mat4 viewMatrix = mainCamera.GetViewMatrix();
+				glm::mat4 projectionMatrix = mainCamera.GetProjectionMatrix();
+				glm::vec4 worldPosClipSpace = projectionMatrix * viewMatrix * worldPosition;
+
+				// Vérifie si le chunk est dans la frustum
+				isInFrustum = (
+					-worldPosClipSpace.w <= worldPosClipSpace.x && worldPosClipSpace.x <= worldPosClipSpace.w &&
+					-worldPosClipSpace.w <= worldPosClipSpace.y && worldPosClipSpace.y <= worldPosClipSpace.w &&
+					-worldPosClipSpace.w <= worldPosClipSpace.z && worldPosClipSpace.z <= worldPosClipSpace.w
+					);
+
+				chunkVisibility[ch] = isInFrustum;
+			}
+			else {
+				// Utiliser le dernier résultat de test
+				isInFrustum = chunkVisibility[ch];
+			}
+
+		  if (isInFrustum) ch->Render();
+			++it;  // Passe au chunk suivant
+		}
 
 
 		mainWindow.RenderSwap();
 	}
 
+	if (generationThread.joinable()) generationThread.join();
 
-	for (u64 handle : Texture::TextureHandles) glMakeTextureHandleNonResidentARB(handle);
+	for (NewChunk* chunk : chunks) delete chunk;
+	delete currentChunk;
 
+	delete blockManager;
 
 	return 0;
 }

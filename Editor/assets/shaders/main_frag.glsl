@@ -1,13 +1,12 @@
 #version 460 core
 
 
-#extension GL_ARB_bindless_texture : require
-
+const uint ATLAS_SIZE = 16;
 
 
 in vec3 vertexNormal;
 in vec2 vertexUV;
-flat in int texIndex;
+in float textureIndex;
 
 
 out vec4 FragColor;
@@ -16,9 +15,7 @@ out vec4 FragColor;
 uniform vec3 colorMult;
 
 
-uniform sampler2D texBlock; //0
-uniform sampler2D texOverlay; //1
-uniform sampler2D texTop; //2
+uniform sampler2D textures;
 
 
 
@@ -29,25 +26,23 @@ void main()
 
 	float light = 1.0;
 
-	vec4 blockColor = texture(texBlock, vertexUV);
-	vec4 overlayColor = texture(texOverlay, vertexUV) * vec4(colorCorrection, 1.0);
-	vec4 topColor = texture(texTop, vertexUV) * vec4(colorCorrection, 1.0);
-
-	vec4 finalColor = blockColor;
+	vec2 atlasVertexUV = vertexUV / ATLAS_SIZE;
+	atlasVertexUV += vec2(mod(textureIndex, ATLAS_SIZE), floor(textureIndex / ATLAS_SIZE)) / ATLAS_SIZE;
+	vec4 blockColor = texture(textures, atlasVertexUV);
 	
-	if (vertexNormal.x != 0 || vertexNormal.z != 0) // overlay
+	if (vertexNormal.x != 0) light = 0.65;
+	else if (vertexNormal.z != 0) light = 0.85;
+	else if (vertexNormal.y != 0) 
 	{
-		finalColor = mix(finalColor, overlayColor, overlayColor.a);
-		if (vertexNormal.x < 0) light = 0.6;
-		else light = 0.9;
-		if (vertexNormal.z < 0) light = 0.8;
-		else light = 0.7;
-	}
-	else if (vertexNormal.y != 0) // top
-	{
-		if (vertexNormal.y > 0) finalColor = topColor;
+		if (vertexNormal.y > 0) light = 1.0;
 		else light = 0.5;
 	}
 
-	FragColor = vec4(finalColor.rgb * light, finalColor.a);
+	// FragColor = vec4(finalColor.rgb * light, finalColor.a);
+	// if (textureIndex == 0) FragColor = vec4(0.0, 1.0, 0.0, 1.0);
+	// else if (textureIndex == 1) FragColor = vec4(0.0, 0.0, 1.0, 1.0);
+	// else if (textureIndex == 2) FragColor = vec4(1.0, 0.0, 0.0, 1.0);
+	//else FragColor = texture(textures, atlasVertexUV);
+
+	FragColor = vec4(blockColor.rgb * light, blockColor.a);
 }
