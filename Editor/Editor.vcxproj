@@ -32,8 +32,11 @@
     <None Include="assets\shaders\main_bindless_textures_frag.glsl" />
     <None Include="assets\shaders\main_frag.glsl" />
     <None Include="assets\shaders\main_vert.glsl" />
+    <None Include="assets\shaders\test\frag.glsl" />
+    <None Include="assets\shaders\test\vert.glsl" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="include\utils\BlockType.h" />
     <ClInclude Include="include\world\BlockManager.h" />
     <ClInclude Include="include\Block.h" />
     <ClInclude Include="include\world\NewChunk.h" />

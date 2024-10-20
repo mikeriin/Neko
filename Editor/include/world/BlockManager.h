@@ -6,18 +6,7 @@
 
 #include <map>
 
-
-enum Block
-{
-	Debug,
-	Dirt,
-	GrassBlock,
-	GrassBlockSide,
-	Stone,
-	Snow,
-	GoldBlock,
-	Bedrock,
-};
+#include "utils/BlockType.h"
 
 
 class BlockManager
@@ -25,8 +14,8 @@ class BlockManager
 public:
 	static BlockManager* GetInstance();
 
-	void MapTexture(Block blockIndex, u32 textureHandleIndex);
-	u32 GetTextureHandleIndex(Block blockIndex) const;
+	void MapTexture(BlockType blockIndex, u32 textureHandleIndex);
+	u32 GetTextureHandleIndex(BlockType blockIndex) const;
 
 protected:
 	BlockManager() = default;
@@ -36,7 +25,7 @@ private:
 	BlockManager& operator=(const BlockManager& other) = delete;
 
 	static BlockManager* m_Instance;
-	static std::map<Block, u32> m_BlockTextureMap;
+	static std::map<BlockType, u32> m_BlockTextureMap;
 };
 
 

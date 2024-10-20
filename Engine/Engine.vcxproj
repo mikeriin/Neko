@@ -24,17 +24,21 @@
     <ClInclude Include="include\graphics\Camera.h" />
     <ClInclude Include="include\core\Event.h" />
     <ClInclude Include="include\core\Keycode.h" />
+    <ClInclude Include="include\graphics\VertexArray.h" />
     <ClInclude Include="include\Neko.h" />
     <ClInclude Include="include\core\Window.h" />
     <ClInclude Include="include\graphics\Shader.h" />
     <ClInclude Include="include\utils\FileReader.h" />
     <ClInclude Include="include\core\Time.h" />
     <ClInclude Include="include\graphics\Texture.h" />
-    <ClInclude Include="include\graphics\VertexArray.h" />
+    <ClInclude Include="include\utils\RandomNumber.h" />
+    <ClInclude Include="include\utils\Vertex.h" />
+    <ClInclude Include="include\graphics\Mesh.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\graphics\BindlessTextureManager.cpp" />
     <ClCompile Include="src\graphics\Buffer.cpp" />
+    <ClCompile Include="src\graphics\Mesh.cpp" />
+    <ClCompile Include="src\graphics\BindlessTextureManager.cpp" />
     <ClCompile Include="src\graphics\Camera.cpp" />
     <ClCompile Include="src\graphics\Shader.cpp" />
     <ClCompile Include="src\core\Win32Event.cpp" />

@@ -20,10 +20,14 @@
 #include "graphics/VertexArray.h"
 #include "graphics/BindlessTextureManager.h"
 
+#include "utils/RandomNumber.h"
+
 //#include "world/Chunk.h"
 #include "world/BlockManager.h"
 #include "world/NewChunk.h"
 #include "Block.h"
+
+#include "utils/BlockType.h"
 
 
 #include <glad/glad.h>
@@ -62,38 +66,64 @@ int main(int argc, char* argv[])
 	BindlessTextureManager textureManager;
 	BlockManager* blockManager = BlockManager::GetInstance();
 	
-	blockManager->MapTexture(Block::Debug, textureManager.AddTexture(new Texture("assets/textures/debug.png")));
-	blockManager->MapTexture(Block::Dirt, textureManager.AddTexture(new Texture("assets/textures/dirt.png")));
-	blockManager->MapTexture(Block::GrassBlock, textureManager.AddTexture(new Texture("assets/textures/grass_block_top.png")));
-	blockManager->MapTexture(Block::GrassBlockSide, textureManager.AddTexture(new Texture("assets/textures/grass_block_side.png")));
-	blockManager->MapTexture(Block::Stone, textureManager.AddTexture(new Texture("assets/textures/stone.png")));
-	blockManager->MapTexture(Block::GoldBlock, textureManager.AddTexture(new Texture("assets/textures/gold_block.png")));
-	blockManager->MapTexture(Block::Snow, textureManager.AddTexture(new Texture("assets/textures/snow.png")));
+	blockManager->MapTexture(BlockType::Error, textureManager.AddTexture(new Texture("assets/textures/debug.png")));
+	blockManager->MapTexture(BlockType::Dirt, textureManager.AddTexture(new Texture("assets/textures/dirt.png")));
+	blockManager->MapTexture(BlockType::GrassBlock, textureManager.AddTexture(new Texture("assets/textures/grass_block_top.png")));
+	blockManager->MapTexture(BlockType::GrassBlockSide, textureManager.AddTexture(new Texture("assets/textures/grass_block_side.png")));
+	blockManager->MapTexture(BlockType::Stone, textureManager.AddTexture(new Texture("assets/textures/stone.png")));
+	blockManager->MapTexture(BlockType::Gold, textureManager.AddTexture(new Texture("assets/textures/gold_block.png")));
+	blockManager->MapTexture(BlockType::Snow, textureManager.AddTexture(new Texture("assets/textures/snow.png")));
+	blockManager->MapTexture(BlockType::SnowGrassBlock, blockManager->GetTextureHandleIndex(BlockType::Snow));
+	blockManager->MapTexture(BlockType::SnowGrassBlockSide, textureManager.AddTexture(new Texture("assets/textures/snow_grass_block_side.png")));
 
 	textureManager.UpdateSSBO();
 
 
 
 	ChunkSettings chunkSettings;
-	chunkSettings.Size = 16;
-	chunkSettings.Seed = 99999999u;
+	chunkSettings.Seed = (u32)RngFromRange(100000, 999999);
+
+	std::cout << chunkSettings.Seed << "\n";
 
 	std::thread generationThread;
 	std::queue<glm::ivec3> chunkToGenerate;
-	for (i32 i = -12; i < 12; i++)
-	{
-		for (i32 j = -12; j < 12; j++)
-		{
-			for (i32 k = -1; k < (i32)(chunkSettings.MaxHeight / chunkSettings.Size); k++)
-			{
-				chunkToGenerate.push(glm::ivec3(i, k, j));
+
+	const i32 VIEW_DISTANCE = 12;
+
+	for (int r = 0; r <= VIEW_DISTANCE; r++) {
+		for (int x = -r; x <= r; x++) {
+			for (int z = -r; z <= r; z++) {
+				if (!(abs(x) == r) && !(abs(z) == r)) continue;
+				for (i32 y = 0; y < (MAX_GENERATION_HEIGHT / CHUNK_SIZE); y++)
+				{
+					chunkToGenerate.push(glm::ivec3(x, y, z));
+				}
 			}
 		}
 	}
+
 	std::vector<NewChunk*> chunks;
 	NewChunk* currentChunk{ nullptr };
 	std::unordered_map<NewChunk*, bool> chunkVisibility;
 	bool isChunkLoading = false;
+
+
+	std::vector<u32> testPositions
+	{
+		{ static_cast<u8>(0) << 8 | static_cast<u8>(1) << 4 | static_cast<u8>(0) },
+		{ static_cast<u8>(0) << 8 | static_cast<u8>(0) << 4 | static_cast<u8>(0) },
+		{ static_cast<u8>(1) << 8 | static_cast<u8>(1) << 4 | static_cast<u8>(0) },
+
+		{ static_cast<u8>(1) << 8 | static_cast<u8>(1) << 4 | static_cast<u8>(0) },
+		{ static_cast<u8>(0) << 8 | static_cast<u8>(0) << 4 | static_cast<u8>(0) },
+		{ static_cast<u8>(1) << 8 | static_cast<u8>(0) << 4 | static_cast<u8>(0) },
+	};
+
+	Buffer testVBO{ sizeof(u32) * testPositions.size(), testPositions.data() };
+
+	VertexArray testVAO{ testVBO.GetId(), sizeof(u32)};
+	testVAO.LinkAttribI(0, 1, GL_UNSIGNED_INT, 0);
+
 
 
 
@@ -103,13 +133,13 @@ int main(int argc, char* argv[])
 	f32 aspect = (f32)viewport[2] / viewport[3];
 
 	CameraSettings camSettings{};
-	camSettings.Position = vec3{ 0.0, chunkSettings.MaxHeight, 0.0 };
+	camSettings.Position = vec3{ 0.0, MAX_GENERATION_HEIGHT * 3, 0.0 };
 	camSettings.AspectRatio = aspect;
 	camSettings.Speed = 50.0f;
 	camSettings.SensitivityX = 0.45f;
 	camSettings.sensitivityY = 0.35f;
 	camSettings.Yaw = -90.0f;
-	camSettings.Pitch = -80.0f;
+	//camSettings.Pitch = -80.0f;
 	camSettings.FarPlane = 1000.0f;
 
 	Camera mainCamera{ camSettings };
@@ -121,6 +151,14 @@ int main(int argc, char* argv[])
 
 	mat4 transform{ 1.0 };
 	mainShader.SetMat4("transform", transform);
+
+
+
+	/*Shader testShader{ "assets/shaders/test/vert.glsl", "assets/shaders/test/frag.glsl" };
+	testShader.Link();
+	testShader.Use();*/
+
+	//testShader.SetMat4("transform", transform);
 
 
 	bool isWireframe = false;
@@ -150,15 +188,20 @@ int main(int argc, char* argv[])
 		
 		// sent cam datas to shaders
 		mainCamera.Update(events, Time::DeltaTime);
+		//mainShader.Use();
 		mainShader.SetMat4("view", mainCamera.GetViewMatrix());
 		mainShader.SetMat4("projection", mainCamera.GetProjectionMatrix());
+
+		/*testShader.Use();
+		testShader.SetMat4("view", mainCamera.GetViewMatrix());
+		testShader.SetMat4("projection", mainCamera.GetProjectionMatrix());*/
 
 		// draw
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 
 		textureManager.Bind(0);
-
+		//mainShader.Use();
 
 		if (!chunkToGenerate.empty() && !isChunkLoading)
 		{
@@ -166,15 +209,16 @@ int main(int argc, char* argv[])
 
 			chunkSettings.Position = chPos;
 			currentChunk = new NewChunk(chunkSettings);
-			
+
 			generationThread = std::thread([&currentChunk]() {
 				currentChunk->Generate();
-			});
+				});
 			generationThread.detach();
 
 			isChunkLoading = true;
 			chunkToGenerate.pop();
 		}
+
 		if (currentChunk && currentChunk->IsGenerated())
 		{
 			chunks.push_back(currentChunk);
@@ -185,47 +229,22 @@ int main(int argc, char* argv[])
 		for (auto it = chunks.begin(); it != chunks.end(); ) {
 			NewChunk* ch = *it;
 
-			// Si le chunk est vide, on le supprime
 			if (ch->IsChunkEmpty()) {
 				delete ch;
-				it = chunks.erase(it); // Efface le chunk et récupère l'itérateur suivant
+				it = chunks.erase(it);
 				continue;
 			}
 
-			bool isInFrustum = true;
-			static int frameCounter = 0;
-			if (frameCounter++ % 10 == 0) {  // Teste la frustum tous les 5 frames
-				// Récupère les paramètres du chunk
-				ChunkSettings currentChunkSettings = ch->GetSettings();
-				glm::vec4 worldPosition{
-						(f64)(currentChunkSettings.Position.x) * currentChunkSettings.Size,
-						(f64)(currentChunkSettings.Position.y) * currentChunkSettings.Size,
-						(f64)(currentChunkSettings.Position.z) * currentChunkSettings.Size,
-						1.0
-				};
-
-				// Multiplie par la matrice de vue et de projection
-				glm::mat4 viewMatrix = mainCamera.GetViewMatrix();
-				glm::mat4 projectionMatrix = mainCamera.GetProjectionMatrix();
-				glm::vec4 worldPosClipSpace = projectionMatrix * viewMatrix * worldPosition;
-
-				// Vérifie si le chunk est dans la frustum
-				isInFrustum = (
-					-worldPosClipSpace.w <= worldPosClipSpace.x && worldPosClipSpace.x <= worldPosClipSpace.w &&
-					-worldPosClipSpace.w <= worldPosClipSpace.y && worldPosClipSpace.y <= worldPosClipSpace.w &&
-					-worldPosClipSpace.w <= worldPosClipSpace.z && worldPosClipSpace.z <= worldPosClipSpace.w
-					);
-
-				chunkVisibility[ch] = isInFrustum;
-			}
-			else {
-				// Utiliser le dernier résultat de test
-				isInFrustum = chunkVisibility[ch];
-			}
-
-		  if (isInFrustum) ch->Render();
-			++it;  // Passe au chunk suivant
+			ch->Render(mainShader);
+			++it;
 		}
+		//mainShader.Unuse();
+
+
+		/*testShader.Use();
+		testVAO.Bind();
+		glDrawArrays(GL_TRIANGLES, 0, 6);
+		testShader.Unuse();*/
 
 
 		mainWindow.RenderSwap();

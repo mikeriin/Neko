@@ -29,6 +29,8 @@
     <None Include="assets\shaders\main_vert.glsl" />
     <None Include="assets\shaders\main_frag.glsl" />
     <None Include="assets\shaders\main_bindless_textures_frag.glsl" />
+    <None Include="assets\shaders\test\vert.glsl" />
+    <None Include="assets\shaders\test\frag.glsl" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\Block.h">
@@ -38,6 +40,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\world\NewChunk.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\utils\BlockType.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

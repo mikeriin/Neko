@@ -2,7 +2,7 @@
 
 
 BlockManager* BlockManager::m_Instance = nullptr;
-std::map<Block, u32> BlockManager::m_BlockTextureMap;
+std::map<BlockType, u32> BlockManager::m_BlockTextureMap;
 
 
 BlockManager* BlockManager::GetInstance()
@@ -15,12 +15,12 @@ BlockManager* BlockManager::GetInstance()
 	return m_Instance;
 }
 
-void BlockManager::MapTexture(Block blockIndex, u32 textureHandleIndex)
+void BlockManager::MapTexture(BlockType blockIndex, u32 textureHandleIndex)
 {
 	m_BlockTextureMap.insert(std::make_pair(blockIndex, textureHandleIndex));
 }
 
-u32 BlockManager::GetTextureHandleIndex(Block blockIndex) const
+u32 BlockManager::GetTextureHandleIndex(BlockType blockIndex) const
 {
 	if (auto it = m_BlockTextureMap.find(blockIndex); it != m_BlockTextureMap.end())
 	{

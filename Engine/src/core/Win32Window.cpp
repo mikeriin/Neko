@@ -41,19 +41,25 @@ static LRESULT Wndproc(
 		break;
 
 	case WM_CLOSE:
+	{
 		if (wnd)
 		{
 			wnd->Close();
 		}
 		DestroyWindow(hWnd);
+	}
 		break;
 
 	case WM_DESTROY:
+	{
 		PostQuitMessage(0);
 		break;
+	}
 
 	default:
+	{
 		return DefWindowProc(hWnd, uMsg, wParam, lParam);
+	}
 	}
 
 	return NULL;

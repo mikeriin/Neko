@@ -8,6 +8,7 @@
 
 #include "graphics/Buffer.h"
 #include "graphics/VertexArray.h"
+#include "graphics/Shader.h"
 
 #include "Block.h"
 #include "world/BlockManager.h"
@@ -35,8 +36,9 @@ NewChunk::NewChunk(const ChunkSettings& settings)
 	, m_EBO(nullptr)
 	, m_VAO(nullptr)
 	, m_BlockManagerInstance(BlockManager::GetInstance())
+	, m_Datas((CHUNK_SIZE + 2) * (CHUNK_SIZE + 2) * (CHUNK_SIZE + 2), BlockType::Air)
 {
-	
+
 }
 
 NewChunk::~NewChunk()
@@ -52,100 +54,129 @@ void NewChunk::Generate()
 {
 	std::lock_guard<std::mutex> lock(m_Mutex);
 
-	const siv::PerlinNoise::seed_type seed = 123456u;
+	const siv::PerlinNoise::seed_type seed = m_Settings.Seed;
 	const siv::PerlinNoise perlin{ seed };
 
-	glm::ivec3 woldRelativePosition = glm::ivec3{
-		m_Settings.Position.x * m_Settings.Size,
-		m_Settings.Position.y * m_Settings.Size,
-		m_Settings.Position.z * m_Settings.Size,
+	glm::ivec3 worldPosition{
+		m_Settings.Position.x * CHUNK_SIZE,
+		m_Settings.Position.y * CHUNK_SIZE,
+		m_Settings.Position.z * CHUNK_SIZE,
 	};
 
-
-	for (i32 z = (i32)(woldRelativePosition.z - 1); z <= (i32)(woldRelativePosition.z + m_Settings.Size); z++)
+	i32 changes = 0;
+	for (i32 z = worldPosition.z; z <= static_cast<i32>(worldPosition.z + CHUNK_SIZE + 1); z++)
 	{
-		for (i32 x = (i32)(woldRelativePosition.x - 1); x <= (i32)(woldRelativePosition.x + m_Settings.Size); x++)
+		for (i32 x = worldPosition.x; x <= static_cast<i32>(worldPosition.x + CHUNK_SIZE + 1); x++)
 		{
-			f64 biomeNoise = perlin.noise2D_01((f64)x * 0.001, (f64)z * 0.001);
-			f64 mountainNoise = perlin.octave2D_01((f32)x * 0.015, (f32)z * 0.015, 8, 0.45);
-			f64 plainNoise = perlin.octave2D_01((f32)x * 0.001, (f32)z * 0.001, 4);
+			f64 biomeNoise = perlin.noise2D_01((f64)(x - 1) * 0.01, (f64)(z - 1) * 0.01);
+
+			f64 plainNoise = perlin.octave2D_01((f64)(x - 1) * 0.015, (f64)(z - 1) * 0.015, 4, 0.2);
+			f64 mountainNoise = perlin.octave2D_01((f64)(x - 1) * 0.025, (f64)(z - 1) * 0.025, 8, 0.4);
+
+			f64 smoothedNoise = smoothstep(0.3, 0.75, biomeNoise);
+			i32 noise = static_cast<i32>(lerp(plainNoise * PLAIN_HEIGHT, mountainNoise * MAX_GENERATION_HEIGHT, smoothedNoise));
 
 
-			f64 transitionFactor = smoothstep(0.55, 0.7, biomeNoise);
-			f64 interpolatedNoise = lerp(plainNoise * 32, mountainNoise * m_Settings.MaxHeight, transitionFactor);
-
-
-			i32 noise = (i32)(interpolatedNoise);
-
-
-			for (i32 y = (i32)(woldRelativePosition.y - 1); y < noise; y++)
+			for (i32 y = worldPosition.y; y <= static_cast<i32>(worldPosition.y + CHUNK_SIZE + 1); y++)
 			{
-				if (mountainNoise < 0.625 && plainNoise > 0.625)
+				if (y <= noise)
 				{
-					if (y == noise - 1) m_Datas.emplace(std::make_tuple(x, y, z), Block::GrassBlock);
-					else m_Datas.emplace(std::make_tuple(x, y, z), Block::Dirt);
-				}
-				else
-				{
-					if (y > 64)
+					i32 index = (x - worldPosition.x) + 
+						((y - worldPosition.y) * (CHUNK_SIZE + 2)) + 
+						((z - worldPosition.z) * (CHUNK_SIZE + 2) * (CHUNK_SIZE + 2));
+					
+					if (mountainNoise > 0.65 && smoothedNoise > 0.65)
 					{
-						if (mountainNoise > 0.8) m_Datas.emplace(std::make_tuple(x, y, z), Block::Snow);
-						else m_Datas.emplace(std::make_tuple(x, y, z), Block::Stone);
+						f64 mountainBlockNoise = perlin.octave2D_01((f64)x * 0.1, (f64)z * 0.1, 8, 0.75);
+						
+						if (mountainBlockNoise <= 0.8)
+						{
+							m_Datas[index] = mountainNoise < 0.75 ? BlockType::Stone : BlockType::Snow;
+						}
+						else m_Datas[index] = (y == noise) ? BlockType::SnowGrassBlock : BlockType::Dirt;
 					}
-					else if (y == noise - 1) m_Datas.emplace(std::make_tuple(x, y, z), Block::GrassBlock);
-					else m_Datas.emplace(std::make_tuple(x, y, z), Block::Dirt);
+					else m_Datas[index] = (y == noise) ? BlockType::GrassBlock : BlockType::Dirt;
+
+					changes++;
 				}
 			}
 		}
 	}
 
-	//if (m_Datas.empty()) return;
-
-	for (const auto& [position, block] : m_Datas)
+	if (changes == 0)
 	{
-		i32 x = std::get<0>(position);
-		i32 y = std::get<1>(position);
-		i32 z = std::get<2>(position);
-		glm::vec3 blockPos{ x, y, z };
+		m_IsGenerationFinished = true;
+		return;
+	}
 
+	for (u8 z = 0; z <= CHUNK_SIZE + 1; z++)
+	{
+		for (u8 x = 0; x <= CHUNK_SIZE + 1; x++)
+		{
+			for (u8 y = 0; y <= CHUNK_SIZE + 1; y++)
+			{
+				i32 index = x + (y * (CHUNK_SIZE + 2)) + (z * (CHUNK_SIZE + 2) * (CHUNK_SIZE + 2));
 
-		bool isTopAir = m_Datas.find(std::make_tuple(x, y + 1, z)) == m_Datas.end();
-		bool isBottomAir = m_Datas.find(std::make_tuple(x, y - 1, z)) == m_Datas.end();
-		bool isFrontAir = m_Datas.find(std::make_tuple(x, y, z + 1)) == m_Datas.end();
-		bool isBackAir = m_Datas.find(std::make_tuple(x, y, z - 1)) == m_Datas.end();
-		bool isRightAir = m_Datas.find(std::make_tuple(x + 1, y, z)) == m_Datas.end();
-		bool isLeftAir = m_Datas.find(std::make_tuple(x - 1, y, z)) == m_Datas.end();
+				BlockType currentBlockType = m_Datas[index];
+				if (currentBlockType == BlockType::Air) continue;
 
-		if (
-			z < (i32)(woldRelativePosition.z)
-			|| z >= (i32)(woldRelativePosition.z + m_Settings.Size)
-			|| x < (i32)(woldRelativePosition.x)
-			|| x >= (i32)(woldRelativePosition.x + m_Settings.Size)
-			|| y < (i32)(woldRelativePosition.y)
-			|| y >= (i32)(woldRelativePosition.y + m_Settings.Size)
-			) continue;
+				//glm::vec3 position{ worldPosition.x + x - 1, worldPosition.y + y - 1, worldPosition.z + z - 1 };
 
-		u32 textureIndex = m_BlockManagerInstance->GetTextureHandleIndex(block);
-		glm::ivec3 facePosition{ x, y, z };
+				//u32 position = EncodeCoords(static_cast<u8>(x), static_cast<u8>(y), static_cast<u8>(z));
 
+				if (
+					x == 0
+					|| x > CHUNK_SIZE
+					|| y == 0
+					|| y > CHUNK_SIZE
+					|| z == 0
+					|| z > CHUNK_SIZE
+					) continue;
 
-		if (isTopAir) AddFace(m_Vertices, m_Indices, CubeFace::Top, facePosition, textureIndex);
+				u8vec3 position{ x, y, z };
 
-		if (block == Block::GrassBlock) textureIndex = m_BlockManagerInstance->GetTextureHandleIndex(Block::GrassBlockSide);
-		if (isFrontAir) AddFace(m_Vertices, m_Indices, CubeFace::Front, facePosition, textureIndex);
-		if (isBackAir) AddFace(m_Vertices, m_Indices, CubeFace::Back, facePosition, textureIndex);
-		if (isRightAir) AddFace(m_Vertices, m_Indices, CubeFace::Right, facePosition, textureIndex);
-		if (isLeftAir) AddFace(m_Vertices, m_Indices, CubeFace::Left, facePosition, textureIndex);
+				i32 topIndex = index + (CHUNK_SIZE + 2);
+				i32 bottomIndex = index - (CHUNK_SIZE + 2);
+				i32 frontIndex = index + (CHUNK_SIZE + 2) * (CHUNK_SIZE + 2);
+				i32 backIndex = index - (CHUNK_SIZE + 2) * (CHUNK_SIZE + 2);
+				i32 rightIndex = index + 1;
+				i32 leftIndex = index - 1;
 
-		if (block == Block::GrassBlock) textureIndex = m_BlockManagerInstance->GetTextureHandleIndex(Block::Dirt);
-		if (isBottomAir) AddFace(m_Vertices, m_Indices, CubeFace::Bottom, facePosition, textureIndex);
+				// check top neighbor
+				if (m_Datas[topIndex] == BlockType::Air)
+					AddFace(m_Vertices, m_Indices, CubeFace::Top, position, m_BlockManagerInstance->GetTextureHandleIndex(currentBlockType));
+				
+				if (currentBlockType == BlockType::GrassBlock) currentBlockType = BlockType::GrassBlockSide;
+				if (currentBlockType == BlockType::SnowGrassBlock) currentBlockType = BlockType::SnowGrassBlockSide;
+
+				// check front neighbor
+				if (m_Datas[frontIndex] == BlockType::Air)
+					AddFace(m_Vertices, m_Indices, CubeFace::Front, position, m_BlockManagerInstance->GetTextureHandleIndex(currentBlockType));
+				// check back neighbor
+				if (m_Datas[backIndex] == BlockType::Air)
+					AddFace(m_Vertices, m_Indices, CubeFace::Back, position, m_BlockManagerInstance->GetTextureHandleIndex(currentBlockType));
+				// check right nieghbor
+				if (m_Datas[rightIndex] == BlockType::Air)
+					AddFace(m_Vertices, m_Indices, CubeFace::Right, position, m_BlockManagerInstance->GetTextureHandleIndex(currentBlockType));
+				// check left neighbor
+				if (m_Datas[leftIndex] == BlockType::Air)
+					AddFace(m_Vertices, m_Indices, CubeFace::Left, position, m_BlockManagerInstance->GetTextureHandleIndex(currentBlockType));
+
+				if (currentBlockType == BlockType::GrassBlockSide
+					|| currentBlockType == BlockType::SnowGrassBlockSide) currentBlockType = BlockType::Dirt;
+
+				// check bottom neighbor
+				if (m_Datas[bottomIndex] == BlockType::Air)
+					AddFace(m_Vertices, m_Indices, CubeFace::Bottom, position, m_BlockManagerInstance->GetTextureHandleIndex(currentBlockType));
+			}
+		}
 	}
 
 	m_IsGenerationFinished = true;
 }
 
 
-void NewChunk::Render()
+void NewChunk::Render(Shader& sh)
 {
 	if (!m_VAO)
 	{
@@ -153,13 +184,17 @@ void NewChunk::Render()
 		m_EBO = new Buffer(sizeof(u32) * m_Indices.size(), m_Indices.data());
 
 		m_VAO = new VertexArray(m_VBO->GetId(), sizeof(Vertex), m_EBO->GetId());
-		m_VAO->LinkAttrib(0, 3, GL_FLOAT, offsetof(Vertex, Position));
+		//m_VAO->LinkAttrib(0, 3, GL_FLOAT, offsetof(Vertex, Position));
+		m_VAO->LinkAttribI(0, 1, GL_UNSIGNED_INT, offsetof(Vertex, Position));
 		m_VAO->LinkAttrib(1, 3, GL_FLOAT, offsetof(Vertex, Normal));
 		m_VAO->LinkAttrib(2, 2, GL_FLOAT, offsetof(Vertex, UV));
 		m_VAO->LinkAttribI(3, 1, GL_UNSIGNED_INT, offsetof(Vertex, TextureIndex));
 	}
 
 	m_VAO->Bind();
+
+	sh.SetVec3("chunkWorldPos", m_Settings.Position * (f32)CHUNK_SIZE);
+
 	glDrawElements(GL_TRIANGLES, (i32)m_Indices.size(), GL_UNSIGNED_INT, 0);
 }
 

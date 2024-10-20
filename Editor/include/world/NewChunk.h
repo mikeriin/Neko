@@ -12,41 +12,28 @@
 #include <iostream>
 
 #include <glm/glm.hpp>
-
 #include <noise/PerlinNoise.hpp>
+
 #include "BlockManager.h"
+#include "utils/BlockType.h"
 
 
 struct Vertex;
 class Buffer;
 class VertexArray;
 class BlockManager;
+class Shader;
 
 
-struct tuple3_hash
-{
-	std::size_t operator()(const std::tuple<i32, i32, i32>& key) const {
-		return std::hash<int>()(std::get<0>(key)) ^ (std::hash<int>()(std::get<1>(key)) << 1) ^ (std::hash<int>()(std::get<2>(key)) << 2);
-	}
-};
-
-
-struct tuple3_equal
-{
-	bool operator()(const std::tuple<i32, i32, i32>& lhs, const std::tuple<i32, i32, i32>& rhs) const {
-		return std::get<0>(lhs) == std::get<0>(rhs)
-			&& std::get<1>(lhs) == std::get<1>(rhs)
-			&& std::get<2>(lhs) == std::get<2>(rhs);
-	}
-};
+const u32 CHUNK_SIZE = 16;
+const u32 MAX_GENERATION_HEIGHT = 96;
+const u32 PLAIN_HEIGHT = 32;
 
 
 struct ChunkSettings
 {
 	u32 Seed								= 123456u;
-	glm::ivec3 Position			= glm::ivec3{ 0, 0, 0 };
-	u32 Size								= 16;
-	u32 MaxHeight						= 192;
+	glm::vec3 Position			= glm::vec3{ 0, 0, 0 };
 };
 
 
@@ -58,7 +45,7 @@ public:
 
 	void Generate();
 	inline bool IsGenerated() const { return m_IsGenerationFinished; }
-	void Render();
+	void Render(Shader& sh);
 	bool IsChunkEmpty() const { return m_Indices.size() == 0; }
 
 	inline const ChunkSettings& GetSettings() const { return m_Settings; }
@@ -71,7 +58,8 @@ private:
 	std::mutex m_Mutex;
 	std::atomic<bool> m_IsGenerationFinished;
 
-	std::unordered_map<std::tuple<i32, i32, i32>, Block, tuple3_hash, tuple3_equal> m_Datas;
+	std::vector<BlockType> m_Datas;
+
 	std::vector<Vertex> m_Vertices;
 	std::vector<u32> m_Indices;
 

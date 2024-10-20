@@ -98,6 +98,7 @@ void EventHandler::PollEvents()
 			m_MouseRelative.first = m_MousePosition.first - x;
 			m_MouseRelative.second = m_MousePosition.second - y;
 
+
 			m_MousePosition.first = x;
 			m_MousePosition.second = y;
 		}
