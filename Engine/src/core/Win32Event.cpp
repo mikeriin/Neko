@@ -3,271 +3,108 @@
 #ifdef _WIN32
 
 
-#include <iostream>
 #include <Windows.h>
-#include <windowsx.h>
 
 
-EventHandler::EventHandler()
-	: m_MousePosition(std::make_pair(0, 0))
-	, m_MouseRelative(std::make_pair(0, 0))
+std::unordered_map<i32, KeyState> EventHandler::m_KeyStates = {};
+
+
+EventHandler::~EventHandler()
 {
-	for (unsigned char i = 0; i < MAX_KEY_SIZE; i++)
+	m_KeyStates.clear();
+}
+
+void EventHandler::TrackKey(Keycode code)
+{
+	if (m_KeyStates.find(code) == m_KeyStates.end())
 	{
-		m_KeyPressed[i] = false;
-		m_KeyReleased[i] = false;
-		m_KeyJustPressed[i] = false;
+		m_KeyStates.emplace(code, KeyState::UP);
 	}
 }
 
 void EventHandler::PollEvents()
 {
-	MSG msg;
-
-	if (PeekMessage(&msg, NULL, NULL, NULL, PM_REMOVE) > 0)
+	MSG msg = { 0 };
+	while (PeekMessage(&msg, NULL, NULL, NULL, PM_REMOVE)) 
 	{
 		TranslateMessage(&msg);
 		DispatchMessage(&msg);
-
-		switch (msg.message)
-		{
-		case WM_KEYDOWN:
-			if (m_KeyPressed[msg.wParam] == false) m_KeyJustPressed[msg.wParam] = true;
-			m_KeyPressed[msg.wParam] = true;
-
-			break;
-
-		case WM_KEYUP:
-			m_KeyPressed[msg.wParam] = false;
-			m_KeyReleased[msg.wParam] = true;
-
-			break;
-
-
-
-		case WM_RBUTTONDOWN:
-			if (m_KeyPressed[MOUSE_RIGHT] == false) m_KeyJustPressed[MOUSE_RIGHT] = true;
-			m_KeyPressed[MOUSE_RIGHT] = true;
-
-			break;
-
-		case WM_MBUTTONDOWN:
-			if (m_KeyPressed[MOUSE_MIDDLE] == false) m_KeyJustPressed[MOUSE_MIDDLE] = true;
-			m_KeyPressed[MOUSE_MIDDLE] = true;
-
-			break;
-
-		case WM_LBUTTONDOWN:
-			if (m_KeyPressed[MOUSE_LEFT] == false) m_KeyJustPressed[MOUSE_LEFT] = true;
-			m_KeyPressed[MOUSE_LEFT] = true;
-
-			break;
-
-
-
-		case WM_RBUTTONUP:
-			m_KeyPressed[MOUSE_RIGHT] = false;
-			m_KeyReleased[MOUSE_RIGHT] = true;
-
-			break;
-
-		case WM_MBUTTONUP:
-			m_KeyPressed[MOUSE_MIDDLE] = false;
-			m_KeyReleased[MOUSE_MIDDLE] = true;
-
-			break;
-
-		case WM_LBUTTONUP:
-			m_KeyPressed[MOUSE_LEFT] = false;
-			m_KeyReleased[MOUSE_LEFT] = true;
-
-			break;
-
-
-
-
-
-
-
-
-		case WM_MOUSEMOVE:
-		{
-			int x = GET_X_LPARAM(msg.lParam);
-			int y = GET_Y_LPARAM(msg.lParam);
-
-			m_MouseRelative.first = m_MousePosition.first - x;
-			m_MouseRelative.second = m_MousePosition.second - y;
-
-
-			m_MousePosition.first = x;
-			m_MousePosition.second = y;
-		}
-			break;
-
-		default:
-			break;
-		}
 	}
-}
 
-bool EventHandler::PollEvents(Event& e)
-{
-	MSG msg;
 
-	if (PeekMessage(&msg, NULL, NULL, NULL, PM_REMOVE) > 0)
+	for (auto& kState : m_KeyStates)
 	{
-		TranslateMessage(&msg);
-		DispatchMessage(&msg);
+		SHORT state = GetAsyncKeyState(kState.first);
+		bool isCurrentlyDown = (state & 0x8000) != 0;
 
-		switch (msg.message)
+		if (isCurrentlyDown)
 		{
-		case WM_QUIT:
-			e.type = EventType::QUIT;
-			return true;
-
-		case WM_KEYDOWN:
-			e.type = EventType::KEY_DOWN;
-			e.key = (Keycode)msg.wParam;
-
-			if (m_KeyPressed[msg.wParam] == false) m_KeyJustPressed[msg.wParam] = true;
-			m_KeyPressed[msg.wParam] = true;
-
-			return true;
-
-		case WM_KEYUP:
-			e.type = EventType::KEY_UP;
-			e.key = (Keycode)msg.wParam;
-
-			m_KeyPressed[msg.wParam] = false;
-			m_KeyReleased[msg.wParam] = true;
-
-			return true;
-
-
-
-
-
-
-
-
-		case WM_RBUTTONDOWN:
-			e.type = BUTTON_DOWN;
-			e.key = (Keycode)MOUSE_RIGHT;
-
-			if (m_KeyPressed[MOUSE_RIGHT] == false) m_KeyJustPressed[MOUSE_RIGHT] = true;
-			m_KeyPressed[MOUSE_RIGHT] = true;
-
-			return true;
-
-		case WM_MBUTTONDOWN:
-			e.type = BUTTON_DOWN;
-			e.key = (Keycode)MOUSE_MIDDLE;
-
-			if (m_KeyPressed[MOUSE_MIDDLE] == false) m_KeyJustPressed[MOUSE_MIDDLE] = true;
-			m_KeyPressed[MOUSE_MIDDLE] = true;
-
-			return true;
-
-		case WM_LBUTTONDOWN:
-			e.type = BUTTON_DOWN;
-			e.key = (Keycode)MOUSE_LEFT;
-
-			if (m_KeyPressed[MOUSE_LEFT] == false) m_KeyJustPressed[MOUSE_LEFT] = true;
-			m_KeyPressed[MOUSE_LEFT] = true;
-
-			return true;
-
-
-
-		case WM_RBUTTONUP:
-			e.type = BUTTON_UP;
-			e.key = (Keycode)MOUSE_RIGHT;
-
-			m_KeyPressed[MOUSE_RIGHT] = false;
-			m_KeyReleased[MOUSE_RIGHT] = true;
-
-			return true;
-
-		case WM_MBUTTONUP:
-			e.type = BUTTON_UP;
-			e.key = (Keycode)MOUSE_MIDDLE;
-
-			m_KeyPressed[MOUSE_MIDDLE] = false;
-			m_KeyReleased[MOUSE_MIDDLE] = true;
-
-			return true;
-
-		case WM_LBUTTONUP:
-			e.type = BUTTON_UP;
-			e.key = (Keycode)MOUSE_LEFT;
-
-			m_KeyPressed[MOUSE_LEFT] = false;
-			m_KeyReleased[MOUSE_LEFT] = true;
-
-			return true;
-
-
-
-
-
-
-
-
-		case WM_MOUSEMOVE:
-			e.type = MOUSE_MOTION;
-			e.key = KEY_NONE;
-			e.x = GET_X_LPARAM(msg.lParam);
-			e.y = GET_Y_LPARAM(msg.lParam);
-
-			m_MouseRelative.first = m_MousePosition.first - e.x;
-			m_MouseRelative.second = m_MousePosition.second - e.y;
-
-			m_MousePosition.first = e.x;
-			m_MousePosition.second = e.y;
-
-
-
-			return true;
-
-		default:
-			e.type = EventType::NONE;
-			e.key = (Keycode)0;
-			break;
+			if (kState.second == KeyState::UP || kState.second == KeyState::RELEASED) kState.second = KeyState::PRESSED;
+			else if (kState.second == KeyState::PRESSED) kState.second = KeyState::DOWN;
+		}
+		else
+		{
+			if (kState.second == KeyState::DOWN || kState.second == KeyState::PRESSED) kState.second = KeyState::RELEASED;
+			else if (kState.second == KeyState::RELEASED) kState.second = KeyState::UP;
 		}
 	}
 
-	return false;
+	POINT p;
+	GetCursorPos(&p);
+	ScreenToClient(GetActiveWindow(), &p);
+
+	m_MouseRelX = p.x - m_MouseX;
+	m_MouseRelY = p.y - m_MouseY;
+
+	m_MouseX = p.x;
+	m_MouseY = p.y;
+
+	if (m_IsRelative)
+	{
+		RECT windowRect;
+		GetClientRect(GetActiveWindow(), &windowRect);
+		int centerX = (windowRect.right - windowRect.left) / 2;
+		int centerY = (windowRect.bottom - windowRect.top) / 2;
+		SetCursorPos(centerX, centerY);  // Set cursor to center
+		m_MouseX = centerX;
+		m_MouseY = centerY;
+	}
 }
 
-bool EventHandler::KeyPressed(Keycode key) const
+bool EventHandler::IsPressed(Keycode code) const
 {
-	return m_KeyPressed[key];
+	auto it = m_KeyStates.find(code);
+	return it != m_KeyStates.end() && it->second == KeyState::PRESSED;
 }
 
-bool EventHandler::KeyJustPressed(Keycode key)
+bool EventHandler::IsDown(Keycode code) const
 {
-	bool result = m_KeyJustPressed[key];
-	m_KeyJustPressed[key] = false;
-	return result;
+	auto it = m_KeyStates.find(code);
+	return it != m_KeyStates.end() && (it->second == KeyState::DOWN || it->second == KeyState::PRESSED);
 }
 
-bool EventHandler::KeyReleased(Keycode key)
+bool EventHandler::IsReleased(Keycode code) const
 {
-	bool result = m_KeyReleased[key];
-	m_KeyReleased[key] = false;
-	return result;
+	auto it = m_KeyStates.find(code);
+	return it != m_KeyStates.end() && it->second == KeyState::RELEASED;
 }
 
-std::pair<i32, i32> EventHandler::GetMousePosition() const
+bool EventHandler::IsUp(Keycode code) const
 {
-	return m_MousePosition;
+	auto it = m_KeyStates.find(code);
+	return it != m_KeyStates.end() && (it->second == KeyState::UP || it->second == KeyState::RELEASED);
 }
 
-std::pair<i32, i32> EventHandler::GetMouseRelative()
+void EventHandler::GetRelativeMousePos(i32& dX, i32& dY) const
 {
-	std::pair<i32, i32> result = m_MouseRelative;
-	m_MouseRelative = std::make_pair(0, 0);
-	return result;
+	dX = m_MouseRelX;
+	dY = m_MouseRelY;
+}
+
+void EventHandler::GetMousePos(i32& mX, i32& mY) const
+{
+	mX = m_MouseX;
+	mY = m_MouseY;
 }
 
 

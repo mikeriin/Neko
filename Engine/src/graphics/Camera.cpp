@@ -64,12 +64,12 @@ void Camera::Update(EventHandler& events, f64 dt)
 {
 	vec3 desiredVelocity{ 0.0 };
 	vec3 forward = glm::normalize(glm::vec3(m_Front.x, 0.0, m_Front.z));
-	if (events.KeyPressed(KEY_Z)) desiredVelocity += forward;
-	if (events.KeyPressed(KEY_Q)) desiredVelocity -= m_Right;
-	if (events.KeyPressed(KEY_S)) desiredVelocity -= forward;
-	if (events.KeyPressed(KEY_D)) desiredVelocity += m_Right;
-	if (events.KeyPressed(KEY_SPACE)) desiredVelocity += Y;
-	if (events.KeyPressed(KEY_CTRL) || events.KeyPressed(KEY_SHIFT)) desiredVelocity -= Y;
+	if (events.IsDown(KEY_Z)) desiredVelocity += forward;
+	if (events.IsDown(KEY_Q)) desiredVelocity -= m_Right;
+	if (events.IsDown(KEY_S)) desiredVelocity -= forward;
+	if (events.IsDown(KEY_D)) desiredVelocity += m_Right;
+	if (events.IsDown(KEY_SPACE)) desiredVelocity += Y;
+	if (events.IsDown(KEY_CTRL) || events.IsDown(KEY_SHIFT)) desiredVelocity -= Y;
 	
 	if (desiredVelocity != vec3{ 0.0 })
 	{
@@ -77,13 +77,21 @@ void Camera::Update(EventHandler& events, f64 dt)
 		m_Position += desiredVelocity;
 	}
 
-	auto mouseRel = events.GetMouseRelative();
-	if ((mouseRel.first != 0 || mouseRel.second != 0) && events.KeyPressed(MOUSE_RIGHT))
-	{
-		vec2 delta = glm::normalize(vec2(mouseRel.first, mouseRel.second));
 
-		m_Yaw -= delta.x * m_SensitivityX;
-		m_Pitch += delta.y * m_SensitivityY;
+	i32 relX;
+	i32 relY;
+	events.GetRelativeMousePos(relX, relY);
+
+
+	if ((relX != 0 || relY != 0) && events.IsDown(MOUSE_RIGHT))
+	{
+		//vec2 delta = glm::normalize(vec2(relX, relY));
+
+		//m_Yaw += delta.x * m_SensitivityX;
+		//m_Pitch -= delta.y * m_SensitivityY;
+
+		m_Yaw += relX * m_SensitivityX;
+		m_Pitch -= relY * m_SensitivityY;
 
 		m_Pitch = std::clamp(m_Pitch, -89.0f, 89.0f);
 		m_Yaw = (f32)std::fmod(m_Yaw, 360);

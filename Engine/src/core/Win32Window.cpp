@@ -368,6 +368,16 @@ bool Window::Create(
 
 	wglMakeCurrent((HDC)m_GraphicsHandle, (HGLRC)m_GLContext);
 
+
+#if (CC_TARGET_PLATFORM == CC_PLATFORM_WIN32)
+	typedef BOOL(WINAPI* PFNWGLSWAPINTERVALEXTPROC)(int interval);
+	PFNWGLSWAPINTERVALEXTPROC wglSwapIntervalEXT = NULL;
+	wglSwapIntervalEXT = (PFNWGLSWAPINTERVALEXTPROC)wglGetProcAddress("wglSwapIntervalEXT");
+	if (wglSwapIntervalEXT)
+		wglSwapIntervalEXT(1);
+#endif
+
+
 	const GLubyte* version = glGetString(GL_VERSION);
 	std::cout << "OpenGL Version: " << version << std::endl;
 

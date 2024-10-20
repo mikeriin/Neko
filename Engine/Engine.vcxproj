@@ -23,7 +23,7 @@
     <ClInclude Include="include\graphics\Buffer.h" />
     <ClInclude Include="include\graphics\Camera.h" />
     <ClInclude Include="include\core\Event.h" />
-    <ClInclude Include="include\core\Keycode.h" />
+    <ClInclude Include="include\core\Key.h" />
     <ClInclude Include="include\graphics\VertexArray.h" />
     <ClInclude Include="include\Neko.h" />
     <ClInclude Include="include\core\Window.h" />

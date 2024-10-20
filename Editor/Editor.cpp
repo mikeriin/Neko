@@ -43,7 +43,18 @@ using mat4 = glm::mat4;
 int main(int argc, char* argv[]) 
 {
 	Window mainWindow{};
+
 	EventHandler events{};
+	events.TrackKey(KEY_Z);
+	events.TrackKey(KEY_Q);
+	events.TrackKey(KEY_S);
+	events.TrackKey(KEY_D);
+	events.TrackKey(KEY_CTRL);
+	events.TrackKey(KEY_SHIFT);
+	events.TrackKey(KEY_SPACE);
+	events.TrackKey(KEY_TAB);
+	events.TrackKey(MOUSE_RIGHT);
+	events.SetRelativeMouseMode(false);
 
 	Time time{};
 	//time.SetMaxFPS(60); // use Time::FixedDeltaTime
@@ -133,11 +144,11 @@ int main(int argc, char* argv[])
 	f32 aspect = (f32)viewport[2] / viewport[3];
 
 	CameraSettings camSettings{};
-	camSettings.Position = vec3{ 0.0, MAX_GENERATION_HEIGHT * 3, 0.0 };
+	camSettings.Position = vec3{ 0.0, 0.0, 0.0 };
 	camSettings.AspectRatio = aspect;
 	camSettings.Speed = 50.0f;
-	camSettings.SensitivityX = 0.45f;
-	camSettings.sensitivityY = 0.35f;
+	camSettings.SensitivityX = 0.3f;
+	camSettings.sensitivityY = 0.2f;
 	camSettings.Yaw = -90.0f;
 	//camSettings.Pitch = -80.0f;
 	camSettings.FarPlane = 1000.0f;
@@ -168,7 +179,7 @@ int main(int argc, char* argv[])
 
 		events.PollEvents();
 
-		if (events.KeyJustPressed(KEY_TAB))
+		if (events.IsPressed(KEY_TAB))
 		{
 			isWireframe = !isWireframe;
 			glPolygonMode(GL_FRONT_AND_BACK, isWireframe ? GL_LINE : GL_FILL);
